@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "frozen-section-sentinel-engine"
+version = "2.0.0"
+description = "FrozenSection Sentinel: Intraoperative Pathology Margin & Discordance Supervisor"
+readme = "README.md"
+authors = [{ name = "Dr. Abu Suraih Sakhri", email = "abusuraih@example.com" }]
+license = { text = "MIT" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+requires-python = ">=3.9"
+dependencies = []
+
+[project.scripts]
+frozen-section-sentinel-engine = "frozen_section_sentinel_agent.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/abusuraihsakhri/frozen-section-sentinel-engine"
+Repository = "https://github.com/abusuraihsakhri/frozen-section-sentinel-engine.git"
