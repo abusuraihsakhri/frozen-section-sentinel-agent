@@ -14,10 +14,11 @@ import datetime
 import json
 import sys
 import uuid
+from enum import Enum
 from typing import Dict, Any, List, Optional
 
 
-class Severity(str):
+class Severity(str, Enum):
     INFO = "INFO"
     ADVISORY = "ADVISORY"
     WARNING = "WARNING"

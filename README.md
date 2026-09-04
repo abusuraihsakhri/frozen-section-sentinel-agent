@@ -85,13 +85,14 @@ python cli.py --task-id <value> --target <value> --primary <value> --secondary <
 Run the automated test suite:
 
 ```bash
+pip install pytest pydantic
 pytest -v
 ```
 
 Execute high-throughput batch simulation benchmarks:
 
 ```bash
-python simulator.py --tasks 1000 --concurrency 8
+python simulator.py 1000
 ```
 
 ---
@@ -100,5 +101,22 @@ python simulator.py --tasks 1000 --concurrency 8
 
 ```bash
 docker build -t frozen-section-sentinel-agent .
-docker run -p 8000:8000 frozen-section-sentinel-agent
+docker run -p 8000:8000 -e AUDIT_SECRET_KEY=$(openssl rand -hex 32) frozen-section-sentinel-agent
 ```
+
+Or with docker-compose:
+
+```bash
+AUDIT_SECRET_KEY=$(openssl rand -hex 32) docker-compose up -d
+```
+
+> **Security note:** Always set `AUDIT_SECRET_KEY` in production. Without it, an ephemeral key is generated on startup (audit trail will not persist across restarts).
+
+---
+
+## 🔒 Security Configuration
+
+| Environment Variable | Purpose | Default |
+|:---|:---|:---|
+| `AUDIT_SECRET_KEY` | HMAC-SHA256 key for tamper-evident audit trail | Auto-generated (ephemeral) |
+| `MODEL_PROVIDER` | LLM backend (`mock`, `ollama`, `claude`, `openai`) | `mock` |

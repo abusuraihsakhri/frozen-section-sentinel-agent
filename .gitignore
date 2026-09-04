@@ -8,3 +8,5 @@ output.csv
 dist/
 build/
 *.egg-info/
+.env
+.env.local
