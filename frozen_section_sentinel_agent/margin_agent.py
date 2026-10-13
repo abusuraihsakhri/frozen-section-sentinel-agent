@@ -3,6 +3,7 @@ Margin Distance Measurement with Positive Margin Alert for Frozen Section Sentin
 Evaluate margin distances and classify per AJCC/CAP guidelines.
 """
 from dataclasses import dataclass
+import math
 from typing import Dict, Optional
 
 
@@ -33,6 +34,8 @@ class MarginMeasurementAgent:
     }
 
     def evaluate_margin_distance(self, distance_mm: float, margin_type: str) -> dict:
+        if not math.isfinite(distance_mm) or distance_mm < 0:
+            raise ValueError("Margin distance must be finite and non-negative")
         if distance_mm > 3:
             classification = "Negative"
         elif distance_mm > 0:
@@ -50,7 +53,12 @@ class MarginMeasurementAgent:
         }
 
     def compute_safe_margin(self, lateral_mm: float, tumor_type: str) -> dict:
-        required = self.TUMOR_TYPE_MARGINS.get(tumor_type.lower(), 2.0)
+        if not math.isfinite(lateral_mm) or lateral_mm < 0:
+            raise ValueError("Margin distance must be finite and non-negative")
+        tumor_key = tumor_type.strip().lower()
+        if tumor_key not in self.TUMOR_TYPE_MARGINS:
+            raise ValueError("Unknown tumor type: an illustrative reference cannot be selected")
+        required = self.TUMOR_TYPE_MARGINS[tumor_key]
         adequate = lateral_mm >= required
         return {
             "required_mm": required,
@@ -58,10 +66,12 @@ class MarginMeasurementAgent:
             "adequate": adequate,
             "tumor_type": tumor_type,
             "deficit_mm": round(max(0, required - lateral_mm), 1),
-            "recommendation": "Margin adequate" if adequate else f"Re-excision recommended; need {required}mm, have {lateral_mm}mm",
+            "recommendation": "At or above the illustrative reference; verify the applicable clinical standard" if adequate else "Below the illustrative reference; refer to the site-specific pathology protocol",
         }
 
     def evaluate_all_margins(self, margins: Dict[str, float], tumor_type: str) -> dict:
+        if not margins:
+            raise ValueError("At least one margin measurement is required")
         results = {}
         positive_margins = []
         close_margins = []
