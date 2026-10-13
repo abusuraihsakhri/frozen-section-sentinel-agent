@@ -7,7 +7,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - AUDIT_SECRET_KEY=${AUDIT_SECRET_KEY:-change-me-in-production}
+      - AUDIT_SECRET_KEY=${AUDIT_SECRET_KEY:?Set a randomly generated AUDIT_SECRET_KEY in your environment}
       - MODEL_PROVIDER=mock
     restart: unless-stopped
     healthcheck:
