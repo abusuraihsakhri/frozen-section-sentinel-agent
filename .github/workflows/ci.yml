@@ -1,40 +1,88 @@
-name: Frozen Section Sentinel Engine CI/CD & Security Verification
+name: Test and validate
 
 on:
   push:
-    branches: [ master, main ]
+    branches: [master, main]
   pull_request:
-    branches: [ master, main ]
+    branches: [master, main]
 
 jobs:
-  test-and-audit:
+  test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.10", "3.11", "3.12"]
-
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install project and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[server,test]"
+      - name: Compile Python source
+        run: python -m compileall -q agents frozen_section_sentinel_agent cli.py enrichment.py frozen_sentinel.py
+      - name: Execute Python tests
+        run: python -m pytest -q
+      - name: CLI smoke tests
+        run: |
+          python cli.py audit --task-id SYNTH-CI --target SYNTH-SPECIMEN --primary 5 --secondary 1 --status NOMINAL
+          python -m frozen_section_sentinel_agent.cli audit --case-id SYNTH-CI --primary 5 --secondary 1 --status NORMAL
+      - name: Verify default audit ledger
+        run: python -c "from agents.base import AuditLogger; assert AuditLogger.verify_integrity()"
 
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ matrix.python-version }}
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: JavaScript syntax check
+        run: node --check web/app.js
+      - name: Browser rule contract tests
+        run: node --test tests/web_app.test.cjs
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install fastapi uvicorn pydantic pytest
+  dependency-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependency auditor
+        run: python -m pip install pip-audit
+      - name: Audit declared runtime dependencies
+        run: |
+          python - <<'PY'
+          import tomllib
+          from pathlib import Path
+          project = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))["project"]
+          requirements = project["dependencies"] + project["optional-dependencies"]["server"]
+          Path("audit-requirements.txt").write_text("\n".join(requirements) + "\n", encoding="utf-8")
+          PY
+          python -m pip_audit --strict -r audit-requirements.txt
 
-    - name: Run Pytest Suite
-      run: |
-        pytest -v
-
-    - name: Security SAST & Zero-PHI Audit
-      run: |
-        python -c "
-        from agents.base import PHIGuard, AuditLogger
-        import pytest
-        assert AuditLogger.verify_integrity() is True
-        print('Security & Zero-PHI Audit Passed!')
-        "
+  pages-smoke:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check published Pages entry and browser script
+        env:
+          SITE_URL: https://abusuraihsakhri.github.io/frozen-section-sentinel-agent
+        run: |
+          for attempt in {1..24}; do
+            if curl --fail --silent --show-error --location "$SITE_URL/" --output /tmp/pages-root.html \
+               && curl --fail --silent --show-error --location "$SITE_URL/web/" --output /tmp/pages-app.html \
+               && curl --fail --silent --show-error --location "$SITE_URL/web/app.js" --output /tmp/pages-app.js \
+               && grep -q 'web/' /tmp/pages-root.html \
+               && grep -q 'Frozen Section Sentinel' /tmp/pages-app.html \
+               && grep -q 'LOCAL_DEMONSTRATION' /tmp/pages-app.js; then
+              echo "Pages entry, HTML, and JavaScript confirmed"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::GitHub Pages entry or browser assets could not be confirmed"
+          exit 1
