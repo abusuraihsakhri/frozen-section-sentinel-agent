@@ -73,9 +73,12 @@ jobs:
           SITE_URL: https://abusuraihsakhri.github.io/frozen-section-sentinel-agent
         run: |
           for attempt in {1..24}; do
-            if curl --fail --silent --show-error --location "$SITE_URL/" | grep -q 'web/' \
-               && curl --fail --silent --show-error --location "$SITE_URL/web/" | grep -q 'Frozen Section Sentinel' \
-               && curl --fail --silent --show-error --location "$SITE_URL/web/app.js" | grep -q 'LOCAL_DEMONSTRATION'; then
+            if curl --fail --silent --show-error --location "$SITE_URL/" --output /tmp/pages-root.html \
+               && curl --fail --silent --show-error --location "$SITE_URL/web/" --output /tmp/pages-app.html \
+               && curl --fail --silent --show-error --location "$SITE_URL/web/app.js" --output /tmp/pages-app.js \
+               && grep -q 'web/' /tmp/pages-root.html \
+               && grep -q 'Frozen Section Sentinel' /tmp/pages-app.html \
+               && grep -q 'LOCAL_DEMONSTRATION' /tmp/pages-app.js; then
               echo "Pages entry, HTML, and JavaScript confirmed"
               exit 0
             fi
