@@ -63,3 +63,23 @@ jobs:
           Path("audit-requirements.txt").write_text("\n".join(requirements) + "\n", encoding="utf-8")
           PY
           python -m pip_audit --strict -r audit-requirements.txt
+
+  pages-smoke:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check published Pages entry and browser script
+        env:
+          SITE_URL: https://abusuraihsakhri.github.io/frozen-section-sentinel-agent
+        run: |
+          for attempt in {1..24}; do
+            if curl --fail --silent --show-error --location "$SITE_URL/" | grep -q 'web/' \
+               && curl --fail --silent --show-error --location "$SITE_URL/web/" | grep -q 'Frozen Section Sentinel' \
+               && curl --fail --silent --show-error --location "$SITE_URL/web/app.js" | grep -q 'LOCAL_DEMONSTRATION'; then
+              echo "Pages entry, HTML, and JavaScript confirmed"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::GitHub Pages entry or browser assets could not be confirmed"
+          exit 1
