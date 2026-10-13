@@ -4,6 +4,7 @@ Track time-to-answer for frozen section cases with SLA monitoring.
 """
 import datetime
 import statistics
+import math
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
@@ -25,11 +26,17 @@ class TATMonitor:
     DEFAULT_SLA_MINUTES = 20
 
     def __init__(self, sla_minutes: float = DEFAULT_SLA_MINUTES):
+        if not math.isfinite(sla_minutes) or sla_minutes <= 0:
+            raise ValueError("SLA must be a finite positive number of minutes")
         self.sla_minutes = sla_minutes
         self.active_timers: Dict[str, dict] = {}
         self.completed: Dict[str, TATRecord] = {}
 
     def start_timer(self, case_id: str, event_type: str = "frozen_section"):
+        if not case_id.strip():
+            raise ValueError("Case ID is required")
+        if case_id in self.active_timers:
+            raise ValueError("Timer already active for this case")
         self.active_timers[case_id] = {
             "start": datetime.datetime.now(datetime.timezone.utc),
             "event_type": event_type,
@@ -64,7 +71,7 @@ class TATMonitor:
         return {
             "mean": round(statistics.mean(times), 1),
             "median": round(statistics.median(times), 1),
-            "p90": round(times[int(n * 0.9)] if n >= 10 else times[-1], 1),
+            "p90": round(times[math.ceil(n * 0.9) - 1], 1),
             "min": round(times[0], 1),
             "max": round(times[-1], 1),
             "exceeding_sla": sum(1 for t in times if t > self.sla_minutes),
