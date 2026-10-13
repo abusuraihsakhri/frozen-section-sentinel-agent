@@ -30,6 +30,8 @@ class FrozenPermanentCorrelator:
         self.discordance_registry: List[DiscordanceRecord] = []
 
     def correlate(self, case_id: str, frozen_dx: str, permanent_dx: str) -> DiscordanceRecord:
+        if not case_id.strip() or not frozen_dx.strip() or not permanent_dx.strip():
+            raise ValueError("Case ID and both diagnoses are required")
         frozen_malignant = self._is_malignant(frozen_dx)
         permanent_malignant = self._is_malignant(permanent_dx)
 
@@ -37,8 +39,12 @@ class FrozenPermanentCorrelator:
             dtype, severity = "Upgrade", 8.0
         elif frozen_malignant and not permanent_malignant:
             dtype, severity = "Downgrade", 6.0
-        else:
+        elif " ".join(frozen_dx.casefold().split()) == " ".join(permanent_dx.casefold().split()):
             dtype, severity = "Concordant", 0.0
+        else:
+            # A matching binary malignancy flag is not diagnostic concordance.
+            # Flag different diagnostic descriptions for pathologist review.
+            dtype, severity = "Review", 0.0
 
         record = DiscordanceRecord(
             case_id=case_id,
@@ -64,12 +70,14 @@ class FrozenPermanentCorrelator:
         concordant = sum(1 for r in self.discordance_registry if r.discordance_type == "Concordant")
         upgrades = sum(1 for r in self.discordance_registry if r.discordance_type == "Upgrade")
         downgrades = sum(1 for r in self.discordance_registry if r.discordance_type == "Downgrade")
+        needs_review = sum(1 for r in self.discordance_registry if r.discordance_type == "Review")
 
         return {
             "total_cases": total,
             "concordant": concordant,
             "upgrades": upgrades,
             "downgrades": downgrades,
+            "needs_review": needs_review,
             "concordance_rate": round(concordant / total * 100, 1),
             "upgrade_rate": round(upgrades / total * 100, 1),
             "downgrade_rate": round(downgrades / total * 100, 1),
